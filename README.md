@@ -1,4 +1,4 @@
-# ♿ Business Accessibility Tracker — API
+# Business Accessibility Tracker — API
 
 The backend API for the Business Accessibility Tracker app. Built with Node.js, Express, and PostgreSQL (Neon). Handles business data, Google Places API integration, and database management.
 
