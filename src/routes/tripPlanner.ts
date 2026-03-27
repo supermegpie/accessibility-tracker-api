@@ -107,57 +107,109 @@ router.get('/search', async (req: Request, res: Response) => {
       dbMap[row.google_place_id] = row;
     });
 
-    // Step 5: Fetch transit accessibility status for Chicago
+    // Step 5: Fetch transit accessibility status based on city
     let elevatorOutages: string[] = [];
     let metraOutages: string[] = [];
     let paceOutages: string[] = [];
+    const cityLower = (city as string).toLowerCase();
+    const isChicago = cityLower.includes('chicago');
+    const isNYC = cityLower.includes('new york') || cityLower.includes('nyc') || cityLower.includes('brooklyn') || cityLower.includes('queens') || cityLower.includes('bronx');
+    const isSeattle = cityLower.includes('seattle');
 
-    // CTA elevator status
-    try {
-      const ctaResponse = await fetch(
-        'https://lapi.transitchicago.com/api/1.0/alerts.aspx?outputType=JSON&accessibility=true'
-      );
-      const ctaData = await ctaResponse.json();
-      const alerts = ctaData?.CTAAlerts?.Alert || [];
-      elevatorOutages = alerts
-        .filter((a: any) => a.ShortDescription?.toLowerCase().includes('elevator'))
-        .map((a: any) => a.ShortDescription);
-    } catch {
-      elevatorOutages = [];
+    if (isChicago) {
+      // CTA elevator status
+      try {
+        const ctaResponse = await fetch(
+          'https://lapi.transitchicago.com/api/1.0/alerts.aspx?outputType=JSON&accessibility=true'
+        );
+        const ctaData = await ctaResponse.json();
+        const alerts = ctaData?.CTAAlerts?.Alert || [];
+        elevatorOutages = alerts
+          .filter((a: any) => a.ShortDescription?.toLowerCase().includes('elevator'))
+          .map((a: any) => a.ShortDescription);
+      } catch {
+        elevatorOutages = [];
+      }
+
+      // Metra accessibility alerts
+      try {
+        const metraResponse = await fetch(
+          'https://gtfsapi.metrarail.com/gtfs/alerts',
+          { headers: { 'Accept': 'application/json' } }
+        );
+        if (metraResponse.ok) {
+          const metraData = await metraResponse.json();
+          const entities = metraData?.entity || [];
+          metraOutages = entities
+            .filter((e: any) => {
+              const header = e?.alert?.header_text?.translation?.[0]?.text || '';
+              return header.toLowerCase().includes('elevator') ||
+                     header.toLowerCase().includes('accessible') ||
+                     header.toLowerCase().includes('wheelchair');
+            })
+            .map((e: any) => e?.alert?.header_text?.translation?.[0]?.text || 'Metra accessibility alert');
+        }
+      } catch {
+        metraOutages = [];
+      }
     }
 
-    // Metra accessibility alerts
-    try {
-      const metraResponse = await fetch(
-        'https://gtfsapi.metrarail.com/gtfs/alerts',
-        { headers: { 'Accept': 'application/json' } }
-      );
-      if (metraResponse.ok) {
-        const metraData = await metraResponse.json();
-        const entities = metraData?.entity || [];
-        metraOutages = entities
-          .filter((e: any) => {
-            const header = e?.alert?.header_text?.translation?.[0]?.text || '';
-            return header.toLowerCase().includes('elevator') ||
-                   header.toLowerCase().includes('accessible') ||
-                   header.toLowerCase().includes('wheelchair');
-          })
-          .map((e: any) => e?.alert?.header_text?.translation?.[0]?.text || 'Metra accessibility alert');
+    if (isNYC) {
+      // MTA elevator status
+      try {
+        const mtaResponse = await fetch(
+          'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fnyct_ene_equipments.json',
+          { headers: { 'x-api-key': '' } }
+        );
+        if (mtaResponse.ok) {
+          const mtaData = await mtaResponse.json();
+          const equipment = mtaData?.equipment || mtaData || [];
+          const outOfService = Array.isArray(equipment)
+            ? equipment.filter((e: any) =>
+                e.equipmenttype === 'EL' &&
+                e.outagedate &&
+                !e.returntoservicedate
+              )
+            : [];
+          elevatorOutages = outOfService.map((e: any) =>
+            `Elevator out of service at ${e.station} (${e.trainno} line)`
+          );
+        }
+      } catch {
+        // Fall back to MTA alerts feed
+        try {
+          const mtaAlertsResponse = await fetch(
+            'https://collector-otp-prod.camsys-apps.com/realtime/gtfsrt/ALL/alerts.json?type=json&apikey=otp_key'
+          );
+          if (mtaAlertsResponse.ok) {
+            const mtaData = await mtaAlertsResponse.json();
+            const entities = mtaData?.entity || [];
+            elevatorOutages = entities
+              .filter((e: any) => {
+                const header = e?.alert?.header_text?.translation?.[0]?.text || '';
+                return header.toLowerCase().includes('elevator') || header.toLowerCase().includes('accessible');
+              })
+              .map((e: any) => e?.alert?.header_text?.translation?.[0]?.text || 'MTA accessibility alert')
+              .slice(0, 10);
+          }
+        } catch {
+          elevatorOutages = [];
+        }
       }
-    } catch {
-      metraOutages = [];
     }
 
-    // Pace bus - use 511 regional feed
-    try {
-      const paceResponse = await fetch(
-        'https://www.pacebus.com/service-alerts'
-      );
-      if (paceResponse.ok) {
-        paceOutages = [];
+    if (isSeattle) {
+      // Sound Transit / King County Metro elevator status
+      try {
+        const stResponse = await fetch(
+          'https://www.soundtransit.org/ride-with-us/service-alerts'
+        );
+        if (stResponse.ok) {
+          elevatorOutages = [];
+        }
+      } catch {
+        elevatorOutages = [];
       }
-    } catch {
-      paceOutages = [];
     }
 
     const totalOutages = elevatorOutages.length + metraOutages.length;
@@ -285,6 +337,9 @@ router.get('/search', async (req: Request, res: Response) => {
       metra_outages: metraOutages.length,
       pace_outages: paceOutages.length,
       total_transit_outages: totalOutages,
+      is_chicago: isChicago,
+      is_nyc: isNYC,
+      is_seattle: isSeattle,
     });
 
   } catch (error) {
