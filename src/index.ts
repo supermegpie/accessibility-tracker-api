@@ -5,6 +5,7 @@ import businessRoutes from './routes/businesses';
 import placesRoutes from './routes/places';
 import reviewRoutes from './routes/reviews';
 import cityRoutes from './routes/cities';
+import tripPlannerRoutes from './routes/tripPlanner';
 
 dotenv.config();
  
@@ -24,6 +25,7 @@ app.use('/api/businesses', businessRoutes);
 app.use('/api/places', placesRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/cities', cityRoutes);
+app.use('/api/trip-planner', tripPlannerRoutes);
  
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
