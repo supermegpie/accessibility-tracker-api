@@ -48,3 +48,31 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 export default router;
+
+// GET /api/businesses/filter - filter businesses by score and type
+router.get('/filter', async (req: Request, res: Response) => {
+  try {
+    const { minScore, businessType } = req.query;
+
+    let query = 'SELECT * FROM businesses WHERE 1=1';
+    const params: any[] = [];
+
+    if (minScore && Number(minScore) > 0) {
+      params.push(Number(minScore));
+      query += ` AND overall_accessibility_score >= $${params.length}`;
+    }
+
+    if (businessType && businessType !== 'all') {
+      params.push(businessType);
+      query += ` AND business_type = $${params.length}`;
+    }
+
+    query += ' ORDER BY overall_accessibility_score DESC NULLS LAST';
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json({ error: 'Failed to filter businesses' });
+  }
+});
