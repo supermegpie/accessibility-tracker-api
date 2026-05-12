@@ -4,7 +4,7 @@ import { Client } from '@googlemaps/google-maps-services-js';
 const router = Router();
 const client = new Client();
 
-// GET /api/places/search?location=Chicago,IL&type=restaurant
+//Search for businesses near provided location using Google Places
 router.get('/search', async (req: Request, res: Response) => {
   try {
     const { location, type } = req.query;
@@ -14,7 +14,7 @@ router.get('/search', async (req: Request, res: Response) => {
       return;
     }
 
-    // First geocode the location to get coordinates
+    // Convert location name into latitude/longitude
     const geocodeResponse = await client.geocode({
       params: {
         address: location as string,
@@ -24,7 +24,7 @@ router.get('/search', async (req: Request, res: Response) => {
 
     const { lat, lng } = geocodeResponse.data.results[0].geometry.location;
 
-    // Then search for nearby places
+    // Search for nearby places (nearby coordinates) using Google Places API
     const placesResponse = await client.placesNearby({
       params: {
         location: { lat, lng },

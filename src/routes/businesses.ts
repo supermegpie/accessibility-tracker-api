@@ -3,7 +3,7 @@ import pool from '../db';
 
 const router = Router();
 
-// GET /api/businesses - return all saved businesses
+//Get all businesses that have been saved to the tracker (GET)
 router.get('/', async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
@@ -16,17 +16,17 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/businesses - save a business to the database
+//Save new business when a user clicks "save to tracker" (POST)
 router.post('/', async (req: Request, res: Response) => {
   try {
     const { google_place_id, name, address, latitude, longitude, business_type } = req.body;
 
-    // Check if business already exists
+    //Check if business already exists to avoid duplicates
     const existing = await pool.query(
       'SELECT * FROM businesses WHERE google_place_id = $1',
       [google_place_id]
     );
-
+    // if it's already saved just return the existing record
     if (existing.rows.length > 0) {
       res.json({ message: 'Business already saved', business: existing.rows[0] });
       return;
@@ -49,7 +49,7 @@ router.post('/', async (req: Request, res: Response) => {
 
 export default router;
 
-// GET /api/businesses/filter - filter businesses by score and type
+//Filter saved businesses by minimum accessibility score and business type
 router.get('/filter', async (req: Request, res: Response) => {
   try {
     const { minScore, businessType } = req.query;

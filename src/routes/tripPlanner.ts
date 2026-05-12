@@ -4,7 +4,7 @@ import pool from '../db';
 
 const router = Router();
 
-// Calculate distance between two coordinates in miles
+//Calculates distance between two coordinates in miles using haversine formula
 function distanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 3959;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -15,7 +15,9 @@ function distanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// CTA station coordinates for matching outages
+/*Stores Chicago train station coordinates used to see if outages are near searched destinations.
+  Need to use coordinates since CTA doesn't provide station-specific outage info.
+  Need to build the out...add more stations. **Add Metra stations too**/
 const CTA_STATIONS: { name: string; lat: number; lng: number }[] = [
   { name: 'Chicago', lat: 41.8967, lng: -87.6315 },
   { name: 'Grand', lat: 41.8912, lng: -87.6278 },
@@ -35,7 +37,7 @@ const CTA_STATIONS: { name: string; lat: number; lng: number }[] = [
 ];
 const client = new Client();
 
-// GET /api/trip-planner/search?query=italian+restaurant&city=Chicago,IL
+// Get the search results for a given query and city (including accessibility scores)
 router.get('/search', async (req: Request, res: Response) => {
   try {
     const { query, city } = req.query;
@@ -45,7 +47,7 @@ router.get('/search', async (req: Request, res: Response) => {
       return;
     }
 
-    // Step 1: Geocode the city to get coordinates
+    //Converts the city name to latitude/longitude so we can search nearby
     const geocodeResponse = await client.geocode({
       params: {
         address: city as string,
@@ -55,7 +57,7 @@ router.get('/search', async (req: Request, res: Response) => {
 
     const { lat, lng } = geocodeResponse.data.results[0].geometry.location;
 
-    // Step 2: Search Google Places for matching businesses
+    //Pull matching businesses from Google Places API using text search 
     const placesResponse = await client.textSearch({
       params: {
         query: `${query} in ${city}`,
@@ -67,7 +69,7 @@ router.get('/search', async (req: Request, res: Response) => {
 
     const places = placesResponse.data.results.slice(0, 20);
 
-    // Step 3: Get details for each place including wheelchair accessibility
+    //Pull all details for each result (including wheelchair accessibility flag)
     const detailedPlaces = await Promise.all(
       places.map(async (place) => {
         try {
@@ -87,10 +89,11 @@ router.get('/search', async (req: Request, res: Response) => {
       })
     );
 
-    // Step 4: Check if each place has reviews in our database
+    //Check if any of the results/places have reviews that are already in the DB. 
     const placeIds = detailedPlaces.map(p => p.place_id).filter(Boolean);
     const dbResult = await pool.query(
-      `SELECT b.google_place_id, b.overall_accessibility_score,
+      //pull existing scores to contribute to overall accessibility score
+      `SELECT b.google_place_id, b.overall_accessibility_score, 
               AVG(r.mobility_score) as avg_mobility,
               AVG(r.restroom_score) as avg_restroom,
               AVG(r.service_score) as avg_service,
@@ -107,7 +110,7 @@ router.get('/search', async (req: Request, res: Response) => {
       dbMap[row.google_place_id] = row;
     });
 
-    // Step 5: Fetch transit accessibility status based on city
+    //Check real-time transit accessibility status for city searched
     let elevatorOutages: string[] = [];
     let metraOutages: string[] = [];
     let paceOutages: string[] = [];
@@ -117,7 +120,7 @@ router.get('/search', async (req: Request, res: Response) => {
     const isSeattle = cityLower.includes('seattle');
 
     if (isChicago) {
-      // CTA elevator status
+      //CTA elevator status:
       try {
         const ctaResponse = await fetch(
           'https://lapi.transitchicago.com/api/1.0/alerts.aspx?outputType=JSON&accessibility=true'
@@ -131,7 +134,7 @@ router.get('/search', async (req: Request, res: Response) => {
         elevatorOutages = [];
       }
 
-      // Metra accessibility alerts
+      //Metra accessibility alerts:
       try {
         const metraResponse = await fetch(
           'https://gtfsapi.metrarail.com/gtfs/alerts',
@@ -176,7 +179,7 @@ router.get('/search', async (req: Request, res: Response) => {
           );
         }
       } catch {
-        // Fall back to MTA alerts feed
+        // Backup if MTA endpoint fails (GTFS-RT alerts) (less detailed but better than nothing)
         try {
           const mtaAlertsResponse = await fetch(
             'https://collector-otp-prod.camsys-apps.com/realtime/gtfsrt/ALL/alerts.json?type=json&apikey=otp_key'
@@ -199,7 +202,7 @@ router.get('/search', async (req: Request, res: Response) => {
     }
 
     if (isSeattle) {
-      // Sound Transit / King County Metro elevator status
+      //Sound Transit/King County Metro elevator status
       try {
         const stResponse = await fetch(
           'https://www.soundtransit.org/ride-with-us/service-alerts'
@@ -214,21 +217,21 @@ router.get('/search', async (req: Request, res: Response) => {
 
     const totalOutages = elevatorOutages.length + metraOutages.length;
 
-    // Step 6: Score each place
+    //Build an accessibility score for each result using all available data
     const scoredPlaces = detailedPlaces.map(place => {
       let score = 0;
       let maxScore = 0;
       const factors: string[] = [];
       const warnings: string[] = [];
 
-      // Google wheelchair accessible entrance (25 points)
+      //25 points if Google has verified the entrance is wheelchair accessible
       maxScore += 25;
       if ((place as any).wheelchair_accessible_entrance === true) {
         score += 25;
         factors.push('Google verified wheelchair accessible entrance');
       }
 
-      // Google rating (15 points)
+      //Highly rated places tend to have better overall service including for disabled guests (15 points)
       maxScore += 15;
       if (place.rating && place.rating >= 4) {
         score += 15;
@@ -237,7 +240,7 @@ router.get('/search', async (req: Request, res: Response) => {
         score += 8;
       }
 
-      // App review scores (40 points)
+      //Community reviews carry the most weight (40 points)
       maxScore += 40;
       const dbData = dbMap[place.place_id!];
       if (dbData) {
@@ -267,24 +270,24 @@ router.get('/search', async (req: Request, res: Response) => {
         warnings.push('No community reviews yet');
       }
 
-      // CTA transit accessibility (20 points)
+      //CTA accessibility (20 points)
       maxScore += 20;
       const placeLat = place.geometry?.location?.lat || 0;
       const placeLng = place.geometry?.location?.lng || 0;
 
-      // Find nearby CTA stations within 0.5 miles
+      //Find nearby L stations within 0.5 miles
       const nearbyStations = CTA_STATIONS.filter(station =>
         distanceMiles(placeLat, placeLng, station.lat, station.lng) <= 0.5
       );
 
-      // Match outages to nearby stations
+      //Match outages to nearby L stations
       const nearbyCtaOutages = elevatorOutages.filter(outage =>
         nearbyStations.some(station =>
           outage.toLowerCase().includes(station.name.toLowerCase())
         )
       );
 
-      // Match metra outages to nearby area (within 1 mile)
+      //Match metra outages to nearby area (within 1 mile)
       const nearbyMetraOutages = metraOutages.filter(() =>
         distanceMiles(placeLat, placeLng, 41.8819, -87.6278) <= 1.0
       );
@@ -323,7 +326,7 @@ router.get('/search', async (req: Request, res: Response) => {
       };
     });
 
-    // Step 7: Sort by accessibility score and return top 5
+    //Sort by accessibility score and return top 5
     const top5 = scoredPlaces
       .sort((a, b) => b.accessibility_score - a.accessibility_score)
       .slice(0, 5);
@@ -348,12 +351,12 @@ router.get('/search', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/trip-planner/share - save results and return share ID
+// save results and return share ID
 router.post('/share', async (req, res) => {
   try {
     const { query, city, results, cta_outages } = req.body;
 
-    // Generate a random 8 character share ID
+    //Generate a random ID for shareable link 
     const shareId = Math.random().toString(36).substring(2, 10);
 
     await pool.query(
@@ -369,7 +372,7 @@ router.post('/share', async (req, res) => {
   }
 });
 
-// GET /api/trip-planner/share/:shareId - retrieve shared results
+// Get shared results using share ID
 router.get('/share/:shareId', async (req, res) => {
   try {
     const { shareId } = req.params;

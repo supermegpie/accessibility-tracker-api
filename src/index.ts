@@ -12,11 +12,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
  
-// Allow requests from your React frontend
+//Only allow requests from the frontend
 app.use(cors({ origin: 'http://localhost:5173' }));
-app.use(express.json()); // Parse JSON request bodies
+app.use(express.json()); // needed to read JSON from POST requests
  
-// Health check route
+//Needed to confirm the server is running
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'API is running' });
 });
