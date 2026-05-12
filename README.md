@@ -1,7 +1,7 @@
 # Business Accessibility Tracker — API
 
 This is the backend for Accessibility Tracker, a community-driven app that helps people with disabilities find and review accessible businesses. Built with Node.js, Express, and PostgreSQL.
-It handles everything the frontend needs such as, saving businesses, storing reviews, searching Google Places, calculating accessibility scores, and pulling real-time transit data for Chicago, NYC, and Seattle (with more cities to be added).
+It handles everything the frontend needs, such as saving businesses, storing reviews, searching Google Places, calculating accessibility scores, and pulling real-time transit data for Chicago, NYC, and Seattle (with more cities to be added).
 
 ## Tech Stack
 
@@ -122,11 +122,11 @@ Each result gets a score out of 100 based on four data sources. The weights refl
 | Source | Weight | Details |
 |---|---|---|
 | Google wheelchair entrance | 25 pts | Whether Google has verified the entrance is accessible |
-| Google rating | 15 pts | Higher rated places tend to provide better service overall |
+| Google rating | 15 pts | Higher-rated places tend to provide better service overall |
 | Community reviews | 40 pts | The most important factor because it's the firsthand experience from the disability community |
 | Transit accessibility | 20 pts | Reduced if there are active outages near the destination |
 
-Transit outages are only shown as warnings for destinations within 0.5 miles of an affected station (i.e.,we will warn someone about an elevator outage across town).
+Transit outages are only shown as warnings for destinations within 0.5 miles of an affected station (i.e., we won't warn someone about an elevator outage across town).
 
 ## Transit Coverage
 
