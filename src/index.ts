@@ -13,7 +13,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
  
 //Only allow requests from the frontend
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://accessibility-tracker-api-production.up.railway.app',
+  ],
+  credentials: true
+}));
 app.use(express.json()); // needed to read JSON from POST requests
  
 //Needed to confirm the server is running
