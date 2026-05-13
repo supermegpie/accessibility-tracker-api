@@ -37,6 +37,14 @@ router.get('/search', async (req: Request, res: Response) => {
         }
       });
       places = textResponse.data.results;
+      // Center on the first result if available
+      if (places.length > 0 && places[0].geometry?.location) {
+        const firstResult = places[0].geometry.location;
+        return res.json({
+          center: { lat: firstResult.lat, lng: firstResult.lng },
+          places
+        });
+      }
     } else {
       // Use the coordinates to find nearby businesses of the requested type
       const placesResponse = await client.placesNearby({
