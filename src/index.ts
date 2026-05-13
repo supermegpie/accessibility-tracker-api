@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'https://accessibility-tracker-api-production.up.railway.app',
+    'https://accessibility-tracker-sooty.vercel.app',
   ],
   credentials: true
 }));
