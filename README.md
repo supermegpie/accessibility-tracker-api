@@ -7,7 +7,7 @@ It handles everything the frontend needs, such as saving businesses, storing rev
 
 - **Runtime:** Node.js + TypeScript
 - **Framework:** Express
-- **Database:** PostgreSQL vis Neon 
+- **Database:** PostgreSQL via Neon 
 - **APIs:** Google Maps, Google Places API, and Google Geocoding API Text Search
 - **Transit:** CTA, Metra, MTA, Sound Transit, King County Metro
 
@@ -45,7 +45,7 @@ npm run dev
 ### Verify it's working:
 
 ```bash
-curl curl http://localhost:3000/health
+curl http://localhost:3000/health
 ```
 
 ### Database Setup
