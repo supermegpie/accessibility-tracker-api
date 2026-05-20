@@ -6,9 +6,14 @@ const router = Router();
 //Get all businesses that have been saved to the tracker (GET)
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM businesses ORDER BY created_at DESC LIMIT 50'
-    );
+    const result = await pool.query(`
+      SELECT b.*,
+        (SELECT COUNT(DISTINCT tag) 
+         FROM reviews r, unnest(r.tags) AS tag 
+         WHERE r.business_id = b.id) as verified_features_count
+      FROM businesses b
+      ORDER BY created_at DESC LIMIT 50
+    `);
     res.json(result.rows);
   } catch (error) {
     console.error('Database error:', error);
@@ -54,7 +59,11 @@ router.get('/filter', async (req: Request, res: Response) => {
   try {
     const { minScore, businessType } = req.query;
 
-    let query = 'SELECT * FROM businesses WHERE 1=1';
+    let query = `SELECT b.*,
+        (SELECT COUNT(DISTINCT tag) 
+         FROM reviews r, unnest(r.tags) AS tag 
+         WHERE r.business_id = b.id) as verified_features_count
+      FROM businesses b WHERE 1=1`;
     const params: any[] = [];
 
     if (minScore && Number(minScore) > 0) {

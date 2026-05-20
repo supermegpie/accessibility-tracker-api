@@ -3,7 +3,7 @@ import pool from '../db';
 
 const router = Router();
 
-//GET all community reviews for a specific business
+// Fetch all community reviews for a specific business
 router.get('/:businessId', async (req: Request, res: Response) => {
   try {
     const { businessId } = req.params;
@@ -18,7 +18,7 @@ router.get('/:businessId', async (req: Request, res: Response) => {
   }
 });
 
-// Save a new accessibility review submitted by a user (POST)
+// Save a new accessibility review submitted by a user
 router.post('/', async (req: Request, res: Response) => {
   try {
     const {
@@ -29,10 +29,11 @@ router.post('/', async (req: Request, res: Response) => {
       service_score,
       restroom_score,
       parking_score,
-      comment
+      comment,
+      tags
     } = req.body;
 
-    //Find average of all scores to get the overall accessibility rating
+    // Average all five category scores to get the overall accessibility rating
     const overall_score = (
       mobility_score +
       sensory_score +
@@ -41,16 +42,16 @@ router.post('/', async (req: Request, res: Response) => {
       parking_score
     ) / 5;
 
-    // Save the review to DB
+    // Write the review to the database
     const result = await pool.query(
       `INSERT INTO reviews 
-        (business_id, firebase_uid, mobility_score, sensory_score, service_score, restroom_score, parking_score, overall_score, comment)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        (business_id, firebase_uid, mobility_score, sensory_score, service_score, restroom_score, parking_score, overall_score, comment, tags)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [business_id, firebase_uid, mobility_score, sensory_score, service_score, restroom_score, parking_score, overall_score, comment]
+      [business_id, firebase_uid, mobility_score, sensory_score, service_score, restroom_score, parking_score, overall_score, comment, tags || []]
     );
 
-    //Update the business overall accessibility score with new review added
+    // Recalculate and update the business score now that a new review has been added
     await pool.query(
       `UPDATE businesses 
        SET overall_accessibility_score = (

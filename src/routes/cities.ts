@@ -55,11 +55,22 @@ router.get('/stats', async (req: Request, res: Response) => {
       LIMIT 5
     `, cityParam);
 
+    // Get most commonly verified features
+    const topTagsResult = await pool.query(`
+      SELECT tag, COUNT(*) as count
+      FROM reviews r, unnest(r.tags) AS tag
+      ${cityName ? 'JOIN businesses b ON r.business_id = b.id WHERE b.address ILIKE $1' : ''}
+      GROUP BY tag
+      ORDER BY count DESC
+      LIMIT 8
+    `, cityParam);
+
     res.json({
       city: cityName || 'All Cities',
       overall: overallResult.rows[0],
       byType: result.rows,
-      topBusinesses: topBusinesses.rows
+      topBusinesses: topBusinesses.rows,
+      topTags: topTagsResult.rows
     });
   } catch (error) {
     console.error('Database error:', error);
