@@ -6,6 +6,7 @@ import placesRoutes from './routes/places';
 import reviewRoutes from './routes/reviews';
 import cityRoutes from './routes/cities';
 import tripPlannerRoutes from './routes/tripPlanner';
+import elevatorRoutes from './routes/elevators';
 
 dotenv.config();
  
@@ -26,6 +27,7 @@ app.use('/api/places', placesRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/cities', cityRoutes);
 app.use('/api/trip-planner', tripPlannerRoutes);
+app.use('/api/elevators', elevatorRoutes);
  
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
