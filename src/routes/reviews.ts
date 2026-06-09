@@ -3,7 +3,7 @@ import pool from '../db';
 
 const router = Router();
 
-// Fetch all community reviews for a specific business
+//GET all community reviews for a specific business
 router.get('/:businessId', async (req: Request, res: Response) => {
   try {
     const { businessId } = req.params;
@@ -18,13 +18,15 @@ router.get('/:businessId', async (req: Request, res: Response) => {
   }
 });
 
-// Save a new accessibility review submitted by a user
+// Save a new accessibility review submitted by a user (POST)
 router.post('/', async (req: Request, res: Response) => {
   try {
     const {
       business_id,
       firebase_uid,
       mobility_score,
+      vision_score,
+      hearing_score,
       sensory_score,
       service_score,
       restroom_score,
@@ -33,30 +35,42 @@ router.post('/', async (req: Request, res: Response) => {
       tags
     } = req.body;
 
-    // Average all five category scores to get the overall accessibility rating
+    // Find overall score by taking average of the 4 disability-specific categories
     const overall_score = (
-      mobility_score +
-      sensory_score +
-      service_score +
-      restroom_score +
-      parking_score
-    ) / 5;
+      (mobility_score || 0) +
+      (vision_score || 0) +
+      (hearing_score || 0) +
+      (sensory_score || 0)
+    ) / 4;
 
-    // Write the review to the database
+    //Save the review to DB
     const result = await pool.query(
       `INSERT INTO reviews 
-        (business_id, firebase_uid, mobility_score, sensory_score, service_score, restroom_score, parking_score, overall_score, comment, tags)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        (business_id, firebase_uid, mobility_score, vision_score, hearing_score, sensory_score, service_score, restroom_score, parking_score, overall_score, comment, tags)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
-      [business_id, firebase_uid, mobility_score, sensory_score, service_score, restroom_score, parking_score, overall_score, comment, tags || []]
+      [business_id, firebase_uid, mobility_score, vision_score, hearing_score, sensory_score, service_score, restroom_score, parking_score, overall_score, comment, tags || []]
     );
 
-    // Recalculate and update the business score now that a new review has been added
+    //Update the business accessibility scores with new review added
     await pool.query(
       `UPDATE businesses 
-       SET overall_accessibility_score = (
-         SELECT AVG(overall_score) FROM reviews WHERE business_id = $1
-       )
+       SET 
+         overall_accessibility_score = (
+           SELECT AVG(overall_score) FROM reviews WHERE business_id = $1
+         ),
+         mobility_accessibility_score = (
+           SELECT AVG(mobility_score) FROM reviews WHERE business_id = $1
+         ),
+         vision_accessibility_score = (
+           SELECT AVG(vision_score) FROM reviews WHERE business_id = $1
+         ),
+         hearing_accessibility_score = (
+           SELECT AVG(hearing_score) FROM reviews WHERE business_id = $1
+         ),
+         sensory_accessibility_score = (
+           SELECT AVG(sensory_score) FROM reviews WHERE business_id = $1
+         )
        WHERE id = $1`,
       [business_id]
     );

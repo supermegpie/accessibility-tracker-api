@@ -21,7 +21,7 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-//Save new business when a user clicks "save to tracker" (POST)
+//Save a new business when a user clicks "Rate & Review" (POST)
 router.post('/', async (req: Request, res: Response) => {
   try {
     const { google_place_id, name, address, latitude, longitude, business_type } = req.body;
@@ -31,6 +31,7 @@ router.post('/', async (req: Request, res: Response) => {
       'SELECT * FROM businesses WHERE google_place_id = $1',
       [google_place_id]
     );
+
     // if it's already saved just return the existing record
     if (existing.rows.length > 0) {
       res.json({ message: 'Business already saved', business: existing.rows[0] });
@@ -52,31 +53,43 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-export default router;
-
-//Filter saved businesses by minimum accessibility score and business type
+//Filter saved businesses by minimum score, disability category, and business type
 router.get('/filter', async (req: Request, res: Response) => {
   try {
-    const { minScore, businessType } = req.query;
+    const { minScore, businessType, category } = req.query;
 
-    let query = `SELECT b.*,
+    //Map disability category to the correct score column
+    const categoryColMap: Record<string, string> = {
+      mobility: 'mobility_accessibility_score',
+      vision: 'vision_accessibility_score',
+      hearing: 'hearing_accessibility_score',
+      sensory: 'sensory_accessibility_score',
+    };
+
+    const scoreCol = category && category !== 'all' && categoryColMap[category as string]
+      ? categoryColMap[category as string]
+      : 'overall_accessibility_score';
+
+    let query = `
+      SELECT b.*,
         (SELECT COUNT(DISTINCT tag) 
          FROM reviews r, unnest(r.tags) AS tag 
          WHERE r.business_id = b.id) as verified_features_count
       FROM businesses b WHERE 1=1`;
+
     const params: any[] = [];
 
     if (minScore && Number(minScore) > 0) {
       params.push(Number(minScore));
-      query += ` AND overall_accessibility_score >= $${params.length}`;
+      query += ` AND b.${scoreCol} >= $${params.length}`;
     }
 
     if (businessType && businessType !== 'all') {
       params.push(businessType);
-      query += ` AND business_type = $${params.length}`;
+      query += ` AND b.business_type = $${params.length}`;
     }
 
-    query += ' ORDER BY overall_accessibility_score DESC NULLS LAST';
+    query += ` ORDER BY b.${scoreCol} DESC NULLS LAST`;
 
     const result = await pool.query(query, params);
     res.json(result.rows);
@@ -85,3 +98,5 @@ router.get('/filter', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to filter businesses' });
   }
 });
+
+export default router;

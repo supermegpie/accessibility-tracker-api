@@ -19,10 +19,10 @@ router.get('/stats', async (req: Request, res: Response) => {
         COUNT(b.id) as total_businesses,
         ROUND(AVG(b.overall_accessibility_score)::numeric, 2) as avg_overall_score,
         ROUND(AVG(r.mobility_score)::numeric, 2) as avg_mobility,
+        ROUND(AVG(r.vision_score)::numeric, 2) as avg_vision,
+        ROUND(AVG(r.hearing_score)::numeric, 2) as avg_hearing,
         ROUND(AVG(r.sensory_score)::numeric, 2) as avg_sensory,
         ROUND(AVG(r.service_score)::numeric, 2) as avg_service,
-        ROUND(AVG(r.restroom_score)::numeric, 2) as avg_restroom,
-        ROUND(AVG(r.parking_score)::numeric, 2) as avg_parking,
         COUNT(r.id) as total_reviews
       FROM businesses b
       LEFT JOIN reviews r ON r.business_id = b.id
@@ -36,10 +36,10 @@ router.get('/stats', async (req: Request, res: Response) => {
         COUNT(b.id) as total_businesses,
         ROUND(AVG(b.overall_accessibility_score)::numeric, 2) as avg_overall_score,
         ROUND(AVG(r.mobility_score)::numeric, 2) as avg_mobility,
+        ROUND(AVG(r.vision_score)::numeric, 2) as avg_vision,
+        ROUND(AVG(r.hearing_score)::numeric, 2) as avg_hearing,
         ROUND(AVG(r.sensory_score)::numeric, 2) as avg_sensory,
         ROUND(AVG(r.service_score)::numeric, 2) as avg_service,
-        ROUND(AVG(r.restroom_score)::numeric, 2) as avg_restroom,
-        ROUND(AVG(r.parking_score)::numeric, 2) as avg_parking,
         COUNT(r.id) as total_reviews
       FROM businesses b
       LEFT JOIN reviews r ON r.business_id = b.id
