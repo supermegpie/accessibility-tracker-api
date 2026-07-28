@@ -3,7 +3,7 @@ import pool from '../db';
 
 const router = Router();
 
-// Pull allv accessibility stats for the dashboard ( filtered by city if provided)
+// Pull all accessibility stats for the dashboard ( filtered by city if provided)
 router.get('/stats', async (req: Request, res: Response) => {
   try {
     const { city } = req.query;

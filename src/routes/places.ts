@@ -22,6 +22,10 @@ router.get('/search', async (req: Request, res: Response) => {
       }
     });
 
+    if (!geocodeResponse.data.results || geocodeResponse.data.results.length === 0) {
+      res.status(400).json({ error: 'Could not find location. Please enter a valid city or neighborhood.' });
+      return;
+    }
     const { lat, lng } = geocodeResponse.data.results[0].geometry.location;
 
     let places;
