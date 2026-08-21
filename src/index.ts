@@ -7,6 +7,8 @@ import reviewRoutes from './routes/reviews';
 import cityRoutes from './routes/cities';
 import tripPlannerRoutes from './routes/tripPlanner';
 import elevatorRoutes from './routes/elevators';
+import userRoutes from './routes/users';
+import userRoutes from './routes/users';
 import dayPlannerRoutes from './routes/dayPlanner';
 
 dotenv.config();
@@ -29,6 +31,8 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/cities', cityRoutes);
 app.use('/api/trip-planner', tripPlannerRoutes);
 app.use('/api/elevators', elevatorRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/day-planner', dayPlannerRoutes);
  
 app.listen(PORT, () => {
