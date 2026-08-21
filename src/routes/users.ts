@@ -3,6 +3,21 @@ import pool from '../db';
 
 const router = Router();
 
+//Check if username is available before user signup (avoid duplicates)
+router.get('/check-username/:username', async (req: Request, res: Response) => {
+  try {
+    const { username } = req.params;
+    const result = await pool.query(
+      'SELECT id FROM users WHERE username = $1',
+      [username]
+    );
+    res.json({ available: result.rows.length === 0 });
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json({ error: 'Failed to check username' });
+  }
+});
+
 // Save or update a user when they log in
 router.post('/', async (req: Request, res: Response) => {
   try {
