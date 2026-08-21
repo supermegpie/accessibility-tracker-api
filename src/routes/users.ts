@@ -4,7 +4,7 @@ import pool from '../db';
 const router = Router();
 
 //Check if username is available before user signup (avoid duplicates)
-router.get('/check-username/:username', async (req: Request, res: Response) => {
+router.get('/username-check/:username', async (req: Request, res: Response) => {
   try {
     const { username } = req.params;
     const result = await pool.query(
