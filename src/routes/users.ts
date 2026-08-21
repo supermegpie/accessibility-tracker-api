@@ -30,8 +30,12 @@ router.post('/', async (req: Request, res: Response) => {
     );
 
     res.status(201).json({ user: result.rows[0] });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Database error:', error);
+    if (error.code === '23505' && error.constraint === 'users_username_key') {
+      res.status(409).json({ error: 'That username is already taken. Please choose a different one.' });
+      return;
+    }
     res.status(500).json({ error: 'Failed to save user' });
   }
 });
