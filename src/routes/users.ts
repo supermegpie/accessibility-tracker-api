@@ -6,21 +6,27 @@ const router = Router();
 // Save or update a user when they log in
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { firebase_uid, email, display_name } = req.body;
+    const { firebase_uid, email, display_name, first_name, last_name, username, identifies_as_disabled } = req.body;
 
     if (!firebase_uid || !email) {
       res.status(400).json({ error: 'firebase_uid and email are required' });
       return;
     }
 
-    //insert if new, update email/name if existing
+    // insert if new, update fields if existing
     const result = await pool.query(
-      `INSERT INTO users (firebase_uid, email, display_name)
-       VALUES ($1, $2, $3)
+      `INSERT INTO users (firebase_uid, email, display_name, first_name, last_name, username, identifies_as_disabled)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (firebase_uid)
-       DO UPDATE SET email = $2, display_name = $3
+       DO UPDATE SET 
+         email = $2,
+         display_name = COALESCE($3, users.display_name),
+         first_name = COALESCE($4, users.first_name),
+         last_name = COALESCE($5, users.last_name),
+         username = COALESCE($6, users.username),
+         identifies_as_disabled = COALESCE($7, users.identifies_as_disabled)
        RETURNING *`,
-      [firebase_uid, email, display_name || email.split('@')[0]]
+      [firebase_uid, email, display_name || email.split('@')[0], first_name, last_name, username, identifies_as_disabled]
     );
 
     res.status(201).json({ user: result.rows[0] });
