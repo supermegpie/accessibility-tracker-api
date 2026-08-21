@@ -30,3 +30,4 @@ app.use('/api/users', userRoutes);
 app.use('/api/day-planner', dayPlannerRoutes);
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
