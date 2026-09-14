@@ -21,7 +21,7 @@ router.get('/username-check/:username', async (req: Request, res: Response) => {
 // Save or update a user when they log in
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { firebase_uid, email, display_name, first_name, last_name, username, identifies_as_disabled } = req.body;
+    const { firebase_uid, email, display_name, first_name, last_name, username, identifies_as_disabled, is_caregiver, disability_categories } = req.body;
 
     if (!firebase_uid || !email) {
       res.status(400).json({ error: 'firebase_uid and email are required' });
@@ -30,8 +30,8 @@ router.post('/', async (req: Request, res: Response) => {
 
     // insert if new, update fields if existing
     const result = await pool.query(
-      `INSERT INTO users (firebase_uid, email, display_name, first_name, last_name, username, identifies_as_disabled)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO users (firebase_uid, email, display_name, first_name, last_name, username, identifies_as_disabled, is_caregiver, disability_categories)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (firebase_uid)
        DO UPDATE SET 
          email = $2,
@@ -39,9 +39,11 @@ router.post('/', async (req: Request, res: Response) => {
          first_name = COALESCE($4, users.first_name),
          last_name = COALESCE($5, users.last_name),
          username = COALESCE($6, users.username),
-         identifies_as_disabled = COALESCE($7, users.identifies_as_disabled)
+         identifies_as_disabled = COALESCE($7, users.identifies_as_disabled),
+         is_caregiver = COALESCE($8, users.is_caregiver),
+         disability_categories = COALESCE($9, users.disability_categories)
        RETURNING *`,
-      [firebase_uid, email, display_name || email.split('@')[0], first_name, last_name, username, identifies_as_disabled]
+      [firebase_uid, email, display_name || email.split('@')[0], first_name, last_name, username, identifies_as_disabled, is_caregiver, disability_categories]
     );
 
     res.status(201).json({ user: result.rows[0] });
