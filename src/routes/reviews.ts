@@ -82,4 +82,26 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/reviews/user/:firebaseUid — get all reviews submitted by a user
+router.get('/user/:firebaseUid', async (req: Request, res: Response) => {
+  try {
+    const { firebaseUid } = req.params;
+
+    const result = await pool.query(
+      `SELECT r.*, b.name as business_name, b.address as business_address,
+              b.overall_accessibility_score, b.google_place_id
+       FROM reviews r
+       JOIN businesses b ON r.business_id = b.id
+       WHERE r.firebase_uid = $1
+       ORDER BY r.created_at DESC`,
+      [firebaseUid]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json({ error: 'Failed to fetch user reviews' });
+  }
+});
+
 export default router;

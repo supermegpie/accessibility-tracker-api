@@ -103,4 +103,43 @@ router.get('/filter', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/businesses/nearby — get reviewed businesses near a location sorted by distance and score
+router.get('/nearby', async (req: Request, res: Response) => {
+  try {
+    const { lat, lng, limit = 10 } = req.query;
+
+    if (!lat || !lng) {
+      res.status(400).json({ error: 'lat and lng are required' });
+      return;
+    }
+
+    const result = await pool.query(
+      `SELECT * FROM (
+        SELECT b.*,
+          (SELECT COUNT(DISTINCT tag) FROM reviews r, unnest(r.tags) AS tag WHERE r.business_id = b.id) as verified_features_count,
+          (SELECT COUNT(*) FROM reviews WHERE business_id = b.id) as review_count,
+          (SELECT comment FROM reviews WHERE business_id = b.id ORDER BY created_at DESC LIMIT 1) as latest_comment,
+          (SELECT display_name FROM users u JOIN reviews r ON r.firebase_uid = u.firebase_uid WHERE r.business_id = b.id ORDER BY r.created_at DESC LIMIT 1) as latest_reviewer,
+          (3959 * acos(
+            LEAST(1.0, cos(radians($1::float)) * cos(radians(latitude::float)) *
+            cos(radians(longitude::float) - radians($2::float)) +
+            sin(radians($1::float)) * sin(radians(latitude::float)))
+          )) AS distance_miles
+        FROM businesses b
+        WHERE overall_accessibility_score IS NOT NULL
+        AND latitude IS NOT NULL
+        AND longitude IS NOT NULL
+      ) sub
+      ORDER BY (distance_miles * 0.4) + ((5 - overall_accessibility_score) * 0.6)
+      LIMIT $3`,
+      [lat, lng, limit]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json({ error: 'Failed to fetch nearby businesses' });
+  }
+});
+
 export default router;
