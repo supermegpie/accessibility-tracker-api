@@ -81,7 +81,11 @@ router.get('/filter', async (req: Request, res: Response) => {
 
     if (minScore && Number(minScore) > 0) {
       params.push(Number(minScore));
-      query += ` AND b.${scoreCol} >= $${params.length}`;
+      // Use overall_accessibility_score if it exists, otherwise use google_rating
+      query += ` AND (
+        COALESCE(b.${scoreCol}, b.google_rating) IS NOT NULL
+        AND COALESCE(b.${scoreCol}, b.google_rating) >= $${params.length}
+      )`;
     }
 
     if (businessType && businessType !== 'all') {

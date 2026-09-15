@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import pool from '../db';
 import { Client } from '@googlemaps/google-maps-services-js';
 
 const router = Router();
@@ -62,9 +63,32 @@ router.get('/search', async (req: Request, res: Response) => {
       places = placesResponse.data.results;
     }
 
+    // Cross-reference with our database to get accessibility scores
+    const placeIds = places.map((p: any) => p.place_id).filter(Boolean);
+    let dbBusinesses: any[] = [];
+    if (placeIds.length > 0) {
+      const dbResult = await pool.query(
+        `SELECT google_place_id, overall_accessibility_score, 
+                mobility_accessibility_score, vision_accessibility_score,
+                hearing_accessibility_score, sensory_accessibility_score,
+                google_rating, google_wheelchair_accessible, auto_scored
+         FROM businesses 
+         WHERE google_place_id = ANY($1)`,
+        [placeIds]
+      );
+      dbBusinesses = dbResult.rows;
+    }
+
+    // Merge database scores into places results
+    const dbMap = new Map(dbBusinesses.map((b: any) => [b.google_place_id, b]));
+    const enrichedPlaces = places.map((p: any) => ({
+      ...p,
+      db_data: dbMap.get(p.place_id) || null
+    }));
+
     res.json({
       center: { lat, lng },
-      places
+      places: enrichedPlaces
     });
 
   } catch (error) {
