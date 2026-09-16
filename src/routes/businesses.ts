@@ -79,18 +79,18 @@ router.get('/filter', async (req: Request, res: Response) => {
 
     const params: any[] = [];
 
-    if (minScore && Number(minScore) > 0) {
+    if (category && category !== 'all') {
+      // Disability filter, only show businesses with that specific category score
+      query += ` AND b.${scoreCol} IS NOT NULL`;
+      if (minScore && Number(minScore) > 0) {
+        params.push(Number(minScore));
+        query += ` AND b.${scoreCol} >= $${params.length}`;
+      }
+    } else if (minScore && Number(minScore) > 0) {
+      // Min score only, use overall score, fall back to google_rating
       params.push(Number(minScore));
-      // Use overall_accessibility_score if it exists, otherwise use google_rating
-      query += ` AND (
-        COALESCE(b.${scoreCol}, b.google_rating) IS NOT NULL
-        AND COALESCE(b.${scoreCol}, b.google_rating) >= $${params.length}
-      )`;
-    }
-
-    if (businessType && businessType !== 'all') {
-      params.push(businessType);
-      query += ` AND b.business_type = $${params.length}`;
+      query += ` AND COALESCE(b.overall_accessibility_score, b.google_rating) IS NOT NULL
+        AND COALESCE(b.overall_accessibility_score, b.google_rating) >= $${params.length}`;
     }
 
     query += ` ORDER BY b.${scoreCol} DESC NULLS LAST`;
