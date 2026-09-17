@@ -106,6 +106,23 @@ CREATE TABLE shared_searches (
   created_at TIMESTAMP DEFAULT NOW()
 );
 ```
+### Scoring System
+Scores are computed from a tiered question structure based on ADA guidelines:
+  - Score 0: Cannot enter (no accessible entry confirmed)
+  - Score 1: Accessible entry confirmed (Tier 1 passed)
+  - Score 2: Entry + core access confirmed (Tier 1 + 2 passed)
+  - Score 3: Entry + core + 2 features
+  - Score 3: Entry + core + 2+ features
+  - Score 5: Entry + core + 3+features, no warnings
+
+### Filter Logic
+ - No filters: show all businesses including auto-scored
+ - Min score only: use COALESCE(overall_accessibility_score, google_rating)
+ - Disability category only: show only businesses with a community score for that category
+ - Both: use specific category score with minimum threshold
+
+### Auto-scored Businesses
+Businesses imported via the bulk import script are marked auto_scored = true. Their baseline score is derived from Google's wheelchair_accessible_entrance flag and 5-star rating. Community reviews override the auto-score once submitted.
 
 ## Environment Variables
 
@@ -115,7 +132,7 @@ CREATE TABLE shared_searches (
 | `DATABASE_URL` | Neon PostgreSQL connection string |
 | `GOOGLE_MAPS_API_KEY` | Google Maps API key |
 
-## How the Trip Planner Scores Destinations
+## How the Trip Planner Scores Destinations (Coming Soon)
 
 Each result gets a score out of 100 based on four data sources. The weights reflect what matters most to people with disabilities:
 
@@ -128,7 +145,7 @@ Each result gets a score out of 100 based on four data sources. The weights refl
 
 Transit outages are only shown as warnings for destinations within 0.5 miles of an affected station (i.e., we won't warn someone about an elevator outage across town).
 
-## Transit Coverage
+## Transit Coverage (Coming Soon)
 
 - **Chicago:** CTA real-time elevator alerts, Metra accessibility alerts, Pace Bus
 - **New York City:** MTA elevator/escalator status
