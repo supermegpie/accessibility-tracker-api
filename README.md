@@ -96,6 +96,24 @@ CREATE TABLE reviews (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE review_features (
+  id SERIAL PRIMARY KEY, 
+  review_id INTEGER REFERENCES reviews(id) ON DELETE CASCADE,
+  business_id INTEGER REFERENCES businesses(id), 
+  firebase_uid VARCHAR(128) NOT NULL,
+  category VARCHAR(50) NOT NULL,
+  tier1_q1 BOOLEAN,
+  tier1_q2 BOOLEAN,
+  tier1_passed BOOLEAN, 
+  tier2_q1 BOOLEAN,
+  tier2_q2 BOOLEAN,
+  tier2_passed BOOLEAN,
+  tier3_features TEXT[],
+  warnings TEXT[],
+  computed_score DECIMAL(3,2),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE shared_searches (
   id SERIAL PRIMARY KEY,
   share_id VARCHAR(12) UNIQUE NOT NULL,
