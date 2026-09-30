@@ -12,7 +12,7 @@ router.get('/', async (req: Request, res: Response) => {
          FROM reviews r, unnest(r.tags) AS tag 
          WHERE r.business_id = b.id) as verified_features_count
       FROM businesses b
-      ORDER BY created_at DESC LIMIT 50
+      ORDER BY overall_accessibility_score DESC NULLS LAST, created_at DESC LIMIT 100
     `);
     res.json(result.rows);
   } catch (error) {
