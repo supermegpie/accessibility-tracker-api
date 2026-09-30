@@ -25,7 +25,7 @@ router.get('/', async (req: Request, res: Response) => {
         FROM businesses b
         WHERE latitude IS NOT NULL AND longitude IS NOT NULL
         ORDER BY distance_miles ASC
-        LIMIT 300`;
+        LIMIT 200`;
       params = [lat, lng];
     } else {
       queryStr = `
