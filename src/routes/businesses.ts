@@ -3,22 +3,48 @@ import pool from '../db';
 
 const router = Router();
 
-//Get all businesses that have been saved to the tracker (GET)
+//Get businesses near a location (or all if no location provided)
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const result = await pool.query(`
-      SELECT b.*,
-        (SELECT COUNT(DISTINCT tag) 
-         FROM reviews r, unnest(r.tags) AS tag 
-         WHERE r.business_id = b.id) as verified_features_count
-      FROM businesses b
-      ORDER BY overall_accessibility_score DESC NULLS LAST, created_at DESC LIMIT 100
-    `);
+    const { lat, lng } = req.query;
+
+    let queryStr: string;
+    let params: any[] = [];
+
+    if (lat && lng) {
+      queryStr = `
+        SELECT b.*,
+          (SELECT COUNT(DISTINCT tag)
+           FROM reviews r, unnest(r.tags) AS tag
+           WHERE r.business_id = b.id) as verified_features_count,
+          (3959 * acos(
+            LEAST(1.0, cos(radians($1::float)) * cos(radians(latitude::float)) *
+            cos(radians(longitude::float) - radians($2::float)) +
+            sin(radians($1::float)) * sin(radians(latitude::float)))
+          )) AS distance_miles
+        FROM businesses b
+        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        ORDER BY distance_miles ASC
+        LIMIT 300`;
+      params = [lat, lng];
+    } else {
+      queryStr = `
+        SELECT b.*,
+          (SELECT COUNT(DISTINCT tag)
+           FROM reviews r, unnest(r.tags) AS tag
+           WHERE r.business_id = b.id) as verified_features_count
+        FROM businesses b
+        ORDER BY overall_accessibility_score DESC NULLS LAST, created_at DESC
+        LIMIT 200`;
+    }
+
+    const result = await pool.query(queryStr, params);
     res.json(result.rows);
   } catch (error) {
     console.error('Database error:', error);
     res.status(500).json({ error: 'Database query failed' });
   }
+});
 });
 
 //Save a new business when a user clicks "Rate & Review" (POST)
