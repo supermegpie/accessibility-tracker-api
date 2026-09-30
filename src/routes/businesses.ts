@@ -45,7 +45,6 @@ router.get('/', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Database query failed' });
   }
 });
-});
 
 //Save a new business when a user clicks "Rate & Review" (POST)
 router.post('/', async (req: Request, res: Response) => {
